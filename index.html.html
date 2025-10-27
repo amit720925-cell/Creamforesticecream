@@ -1,0 +1,1980 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>🍦 Cream Forest — Admin + Seller Dashboard</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#fffaf0;
+      --accent:#2f8f6b;
+      --accent2:#ff7675;
+      --card:#fff;
+      --muted:#6b6b6b;
+      font-family:"Segoe UI",Roboto,system-ui,Arial;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:#111}
+
+    .topbar{
+      background:linear-gradient(90deg,var(--accent2),#ff9f76);
+      padding:12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      color:#fff;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand img{width:48px;height:48px;border-radius:8px;object-fit:cover}
+
+    .container{display:flex;gap:16px;padding:16px;min-height:calc(100vh - 72px)}
+    .sidebar{
+      width:260px;background:#1b7a57;color:#fff;border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(0,0,0,.08)
+    }
+    .sidebar h3{margin:0 0 10px 0;font-size:18px}
+    .menu button{
+      display:block;width:100%;text-align:left;padding:10px;border-radius:8px;border:none;background:0 0;color:#fff;margin-bottom:8px;cursor:pointer;font-weight:600
+    }
+    .menu button.active{background:rgba(255,255,255,.08)}
+
+    .main{flex:1;display:flex;flex-direction:column;gap:12px;padding-bottom:40px}
+    .panel{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06)}
+    .hrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+
+    .input,input,select,textarea{padding:8px;border:1px solid #e6e6e6;border-radius:8px}
+    .btn{padding:8px 12px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer}
+    .btn.warn{background:#ff9f43}
+    .btn.ghost{background:0 0;border:1px solid #ddd;color:#333}
+
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    @media(max-width:980px){.grid-3{grid-template-columns:1fr}}
+
+    .products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+    .prod{background:#fafafa;padding:8px;border-radius:10px;text-align:center;border:1px solid #f0f0f0;display:flex;flex-direction:column;align-items:center;gap:6px}
+    .prod img{width:100%;height:96px;object-fit:cover;border-radius:8px}
+
+    .sale-panel{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+    .sale-left{flex:1;min-width:320px}
+    .sale-right{width:380px;background:#fbfbfb;padding:12px;border-radius:10px;border:1px solid #eee}
+
+    .table{width:100%;border-collapse:collapse}
+    .table td,.table th{border:1px solid #eee;padding:8px;text-align:left}
+    .table th{background:#fff6eb}
+    .small{font-size:13px;color:var(--muted)}
+    .note{font-size:12px;color:#666;margin-top:6px}
+
+    @media(max-width:880px){
+      .container{flex-direction:column}
+      .sidebar{width:100%;display:flex;flex-direction:row;gap:8px;overflow:auto}
+      .menu{display:flex;gap:6px}
+      .sale-right{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <img id="logo" src="https://content.jdmagicbox.com/v2/comp/dhanbad/p8/9999px326.x326.240228030224.i4p8/catalogue/cream-forest-ice-cream-manufacturing-plant-mahuda-dhanbad-ice-cream-parlours-2xgmopkmc8-250.jpg" alt="logo">
+      <div>
+        <div style="font-weight:700;font-size:18px">🍦 Cream Forest</div>
+        <div class="small" data-translate-key="app_subtitle">Inventory • Sales • Audit</div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div class="small" id="clock"></div>
+
+      <label style="color:#fff" data-translate-key="view_label">View:</label>
+      <select id="panelSelect" style="padding:6px;border-radius:6px" onchange="switchPanelFromTop()">
+        <option value="admin" data-translate-key="admin_panel_option">Admin Panel</option>
+        <option value="seller" data-translate-key="seller_panel_option">Seller Panel</option>
+      </select>
+
+      <label style="color:#fff" data-translate-key="language_label">Language:</label>
+      <select id="langSelect" style="padding:6px;border-radius:6px">
+        <option value="en">English</option>
+        <option value="hi">हिन्दी</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="container">
+    <aside class="sidebar">
+      <h3 id="sideTitle">Admin Menu</h3>
+      <div class="menu" id="menu"></div>
+      <div class="note" data-translate-key="local_storage_note">Data is stored locally in this browser.</div>
+    </aside>
+
+    <main class="main" id="main">
+      <section id="admin-dashboard" class="panel" style="display:none">
+        <div class="hrow" style="justify-content:space-between;align-items:center">
+          <div>
+            <h2 data-translate-key="admin_dashboard_title">Admin Dashboard</h2>
+            <div class="small" data-translate-key="overview">Overview</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:700">
+              <span data-translate-key="total_sales">Total Sales</span>: ₹ <span id="adminStatSales">0.00</span>
+            </div>
+            <div class="small">
+              <span data-translate-key="total_items_sold">Total Items Sold</span>: <span id="adminStatItems">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="grid-3">
+          <div class="panel">
+            <div class="small" data-translate-key="vendors">Vendors</div>
+            <div style="font-weight:700;font-size:18px" id="adminStatVendors">0</div>
+          </div>
+          <div class="panel">
+            <div class="small" data-translate-key="products">Products</div>
+            <div style="font-weight:700;font-size:18px" id="adminStatProducts">0</div>
+          </div>
+          <div class="panel">
+            <div class="small" data-translate-key="audit_entries">Audit Entries</div>
+            <div style="font-weight:700;font-size:18px" id="adminStatAudit">0</div>
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="grid-3" style="margin-bottom:12px">
+          <div class="panel">
+            <div class="small">Platform Fee Earned</div>
+            <div style="font-weight:700;font-size:18px" id="cardPlatformFee">₹ 0.00</div>
+          </div>
+          <div class="panel">
+            <div class="small">Vendor Due Total</div>
+            <div style="font-weight:700;font-size:18px" id="cardVendorDue">₹ 0.00</div>
+          </div>
+          <div class="panel">
+            <div class="small">Total Expenses</div>
+            <div style="font-weight:700;font-size:18px" id="cardTotalExpenses">₹ 0.00</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3 data-translate-key="recent_sales">Recent Sales</h3>
+          <div id="adminRecentSales"></div>
+        </div>
+      </section>
+
+      <section id="admin-vendors" class="panel" style="display:none">
+        <h2 data-translate-key="vendors_admin_title">Vendors (Admin)</h2>
+        <div class="hrow">
+          <input id="adminVendorName" class="input" data-translate-key="vendor_name_placeholder" placeholder="Vendor Name (e.g. Prakash)">
+          <input id="adminVendorComm" class="input" type="number" min="0" max="100" data-translate-key="commission_placeholder" placeholder="Commission %">
+          <button class="btn" onclick="adminAddVendor()" data-translate-key="add_vendor_btn">Add Vendor</button>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div>
+          <h3 data-translate-key="vendor_list">List of Vendors</h3>
+          <table class="table" id="tblAdminVendors"></table>
+        </div>
+      </section>
+
+      <section id="admin-products" class="panel" style="display:none">
+        <h2 data-translate-key="products_inventory_title">Products &amp; Inventory (Admin)</h2>
+        <div class="hrow">
+          <input id="adminProdName" class="input" data-translate-key="product_name_placeholder" placeholder="Product Name (e.g. Choco Bar)">
+          <input id="adminProdPrice" class="input" type="number" min="0" data-translate-key="price_placeholder" placeholder="Price (₹)">
+          <input id="adminProdQty" class="input" type="number" min="0" data-translate-key="stock_qty_placeholder" placeholder="Stock Quantity (e.g., 50)">
+          <input id="adminProdImg" class="input" data-translate-key="image_url_placeholder" placeholder="Image URL (optional)">
+          <button class="btn" onclick="adminAddProduct()" data-translate-key="add_product_btn">Add Product</button>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div>
+          <h3 data-translate-key="inventory">Inventory</h3>
+          <table class="table" id="tblAdminProducts"></table>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div>
+          <h3 data-translate-key="inventory_audit_log">Inventory Audit Log</h3>
+          <table class="table" id="tblAdminAudit"></table>
+        </div>
+      </section>
+
+      <section id="admin-sales" class="panel" style="display:none">
+        <h2 data-translate-key="all_sales_admin">All Sales (Admin)</h2>
+        <table class="table" id="tblAdminSales"></table>
+      </section>
+
+      <section id="admin-expenses" class="panel" style="display:none">
+        <h2 data-translate-key="expenses_admin">Expenses (Admin)</h2>
+        <div class="hrow">
+          <input id="expenseDesc" class="input" data-translate-key="expense_desc_placeholder" placeholder="Expense Description (e.g. Milk)" style="flex:1">
+          <select id="expenseType" class="input" onchange="onExpenseTypeChange()">
+            <option value="business">Business Expense</option>
+            <option value="settlement">Vendor Settlement (Pay Vendor)</option>
+          </select>
+          <select id="expenseVendor" class="input" style="display:none">
+            <option value="">-- Select Vendor --</option>
+          </select>
+          <input id="expenseAmt" class="input" type="number" min="0" data-translate-key="amount_placeholder" placeholder="Amount (₹)">
+          <input id="expenseDate" class="input" type="date">
+          <button class="btn" onclick="addExpense()" data-translate-key="add_expense_btn">Add Expense</button>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <h3 data-translate-key="expense_list">List of Expenses</h3>
+        <table class="table" id="tblAdminExpenses"></table>
+      </section>
+
+      <section id="admin-reports" class="panel" style="display:none">
+        <h2 data-translate-key="reports_admin">Reports (Admin)</h2>
+        <div class="hrow" style="align-items:end">
+          <div>
+            <label data-translate-key="from_label">From</label><br>
+            <input type="date" id="adminRepFrom" class="input">
+          </div>
+          <div>
+            <label data-translate-key="to_label">To</label><br>
+            <input type="date" id="adminRepTo" class="input">
+          </div>
+          <div style="min-width:200px">
+            <label data-translate-key="vendor_label">Vendor</label><br>
+            <select id="adminRepVendor" class="input"></select>
+          </div>
+          <div>
+            <button class="btn" onclick="adminGenerateReport()" data-translate-key="generate_btn">Generate</button>
+            <button class="btn warn" onclick="adminPrintReport()" data-translate-key="print_btn">Print</button>
+            <button class="btn" onclick="adminExportReportPdf()" data-translate-key="export_pdf_btn">Export PDF</button>
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+        <div id="adminReportArea"></div>
+
+        <div style="height:12px"></div>
+        <div>
+          <canvas id="adminChartVendor" style="max-height:260px"></canvas>
+        </div>
+      </section>
+
+      <section id="admin-payments" class="panel" style="display:none">
+        <h2 data-translate-key="payments_admin">Vendor Payments</h2>
+        <div class="hrow" style="align-items:center">
+          <div style="flex:1">
+            <div class="small">यहाँ हर विक्रेता का कुल बिक्री, भुगतान, और बाकी (due) दिखेगा।</div>
+          </div>
+          <div>
+            <button class="btn" onclick="renderAdminPayments()">Refresh</button>
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+        <table class="table" id="tblAdminPayments"></table>
+      </section>
+
+      <section id="seller-panel" class="panel" style="display:none">
+        <h2 data-translate-key="seller_panel_create_sale">Seller Panel — Create Sale</h2>
+        <div class="sale-panel">
+          <div class="sale-left">
+            <div class="hrow" style="align-items:center">
+              <div style="flex:1">
+                <label data-translate-key="select_vendor">Select Vendor</label><br>
+                <select id="saleVendor" class="input" onchange="onVendorSelect()"></select>
+              </div>
+              <div style="width:120px">
+                <label data-translate-key="commission_perc">Commission %</label><br>
+                <input id="saleCommission" class="input" type="number" readonly>
+              </div>
+              <div style="width:120px">
+                <label data-translate-key="discount_perc">Discount %</label><br>
+                <input id="saleDiscount" class="input" type="number" min="0" max="100" value="0" oninput="updateSaleSummary()">
+              </div>
+            </div>
+
+            <div style="height:12px"></div>
+
+            <div>
+              <h3 data-translate-key="products_available_stock">Products (Available Stock)</h3>
+              <div id="sellerProducts" class="products-grid"></div>
+            </div>
+          </div>
+
+          <aside class="sale-right">
+            <h3 data-translate-key="sale_summary">Sale Summary</h3>
+            <div class="small" data-translate-key="discount_commission_note">Discount is applied first → then commission on the discounted amount.</div>
+
+            <div style="height:10px"></div>
+
+            <div style="display:flex;justify-content:space-between">
+              <div class="small" data-translate-key="sub_total">Sub-total</div>
+              <div><b>₹ <span id="saleTotal">0.00</span></b></div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between">
+              <div class="small"><span data-translate-key="discount">Discount</span>( <span id="saleDiscountLabel">0</span>% )</div>
+              <div>− ₹ <span id="saleDiscountAmt">0.00</span></div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between">
+              <div class="small" data-translate-key="after_discount">After Discount</div>
+              <div>₹ <span id="saleAfterDiscount">0.00</span></div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between">
+              <div class="small"><span data-translate-key="commission">Commission</span>( <span id="saleCommissionLabel">0</span>% )</div>
+              <div>− ₹ <span id="saleCommAmt">0.00</span></div>
+            </div>
+
+            <hr>
+
+            <div style="display:flex;justify-content:space-between">
+              <div style="font-weight:700" data-translate-key="final_amount">Final Amount</div>
+              <div style="font-weight:700">₹ <span id="saleFinal">0.00</span></div>
+            </div>
+
+            <div style="height:8px"></div>
+
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+              <div style="flex:1">
+                <label class="small">Received Now (₹)</label><br>
+                <input id="saleReceivedNow" class="input" type="number" min="0" value="0" oninput="updateSaleSummary()">
+              </div>
+              <div style="min-width:150px">
+                <label class="small">Payment Type</label><br>
+                <select id="salePaymentType" class="input">
+                  <option value="received">Received &amp; Reduce Due</option>
+                  <option value="credit">Add to Credit (leave due)</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn" id="btnSaveSale" onclick="submitSale()" data-translate-key="save_sale_btn">Save Sale</button>
+              <button class="btn warn" onclick="printCurrentSale()" data-translate-key="print_btn">Print</button>
+              <button class="btn warn" onclick="saveCurrentSaleAsPdf()" data-translate-key="export_pdf_btn">Export PDF</button>
+              <button class="btn ghost" onclick="previewSale()" data-translate-key="preview_bill_btn">Preview Bill</button>
+              <button class="btn ghost" onclick="clearSaleInputs()" data-translate-key="clear_btn">Clear</button>
+            </div>
+
+            <div style="height:12px"></div>
+            <div id="salePreviewArea" style="display:none"></div>
+          </aside>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="panel">
+          <h3 data-translate-key="last_saved_sale">Last Saved Sale (Yours)</h3>
+          <div id="sellerLastSale" class="small"></div>
+          <div style="margin-top:8px" id="sellerLastSaleActions"></div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="panel">
+          <h3 data-translate-key="your_recent_sales">Your Recent Sales</h3>
+          <div id="sellerRecent"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    /* -------------------------
+       Translations (EN / HI)
+       ------------------------- */
+    const translations = {
+      hi: {
+        app_subtitle:'इन्वेंटरी • बिक्री • ऑडिट',
+        view_label:'देखें:',
+        admin_panel_option:'एडमिन पैनल',
+        seller_panel_option:'विक्रेता पैनल',
+        language_label:'भाषा:',
+        reset_demo_btn:'डेमो रीसेट करें',
+        local_storage_note:'डेटा इस ब्राउज़र में स्थानीय रूप से संग्रहीत है।',
+        admin_dashboard_title:'एडमिन डैशबोर्ड',
+        overview:'अवलोकन',
+        total_sales:'कुल बिक्री',
+        total_items_sold:'कुल बेची गई वस्तुएँ',
+        vendors:'विक्रेता',
+        products:'उत्पाद',
+        audit_entries:'ऑडिट प्रविष्टियाँ',
+        recent_sales:'हाल की बिक्री',
+        vendors_admin_title:'विक्रेता (एडमिन)',
+        vendor_name_placeholder:'विक्रेता का नाम (जैसे प्रकाश)',
+        commission_placeholder:'कमीशन %',
+        add_vendor_btn:'विक्रेता जोड़ें',
+        vendor_list:'विक्रेताओं की सूची',
+        products_inventory_title:'उत्पाद और इन्वेंटरी (एडमिन)',
+        product_name_placeholder:'उत्पाद का नाम (जैसे चोको बार)',
+        price_placeholder:'कीमत (₹)',
+        stock_qty_placeholder:'स्टॉक मात्रा (जैसे, 50)',
+        image_url_placeholder:'छवि URL (वैकल्पिक)',
+        add_product_btn:'उत्पाद जोड़ें',
+        inventory:'इन्वेंटरी',
+        inventory_audit_log:'इन्वेंटरी ऑडिट लॉग',
+        all_sales_admin:'सभी बिक्री (एडमिन)',
+        expenses_admin:'खर्च (एडमिन)',
+        expense_desc_placeholder:'खर्च का विवरण (जैसे दूध)',
+        amount_placeholder:'राशि (₹)',
+        add_expense_btn:'खर्च जोड़ें',
+        expense_list:'खर्चों की सूची',
+        reports_admin:'रिपोर्ट (एडमिन)',
+        from_label:'से',
+        to_label:'तक',
+        vendor_label:'विक्रेता',
+        generate_btn:'उत्पन्न करें',
+        print_btn:'प्रिंट',
+        export_pdf_btn:'PDF निर्यात करें',
+        seller_panel_create_sale:'विक्रेता पैनल — बिक्री बनाएँ',
+        select_vendor:'विक्रेता चुनें',
+        commission_perc:'कमीशन %',
+        discount_perc:'छूट %',
+        products_available_stock:'उत्पाद (उपलब्ध स्टॉक)',
+        sale_summary:'बिक्री सारांश',
+        discount_commission_note:'पहले छूट लागू होती है → फिर छूट वाली राशि पर कमीशन।',
+        sub_total:'उप-योग',
+        discount:'छूट',
+        after_discount:'छूट के बाद',
+        commission:'कमीशन',
+        final_amount:'अंतिम राशि',
+        preview_bill_btn:'बिल का पूर्वावलोकन करें',
+        save_sale_btn:'बिक्री सहेजें',
+        clear_btn:'साफ़ करें',
+        last_saved_sale:'अंतिम सहेजी गई बिक्री (आपकी)',
+        your_recent_sales:'आपकी हाल की बिक्री',
+        th_name:'नाम',
+        th_commission_perc:'कमीशन %',
+        th_actions:'कार्य',
+        th_product:'उत्पाद',
+        th_price:'कीमत',
+        th_stock:'स्टॉक',
+        th_last_update:'अंतिम अपडेट',
+        th_date:'तिथि',
+        th_change:'बदलाव',
+        th_by:'किसके द्वारा',
+        th_note:'नोट',
+        th_description:'विवरण',
+        th_amount:'राशि',
+        th_vendor:'विक्रेता',
+        th_items:'वस्तुएँ',
+        th_total:'कुल',
+        th_discount:'छूट',
+        th_commission:'कमीशन',
+        th_final:'अंतिम',
+        edit_btn:'संपादित करें',
+        remove_btn:'हटाएँ',
+        adjust_stock_btn:'स्टॉक समायोजित करें',
+        prompt_vendor_name:'विक्रेता का नाम',
+        prompt_commission:'कमीशन %',
+        alert_enter_vendor_name:'विक्रेता का नाम डालें',
+        alert_vendor_exists:'विक्रेता पहले से मौजूद है',
+        confirm_remove_vendor:'विक्रेता को हटाना है?',
+        prompt_product_name:'नाम',
+        prompt_price:'कीमत (₹)',
+        prompt_image_url:'छवि URL',
+        alert_valid_name_price:'नाम और मान्य मूल्य डालें',
+        confirm_remove_product:'उत्पाद को हटाना है?',
+        prompt_stock_change: (name) => `"${name}" के लिए परिवर्तन मात्रा दर्ज करें (+ जोड़ने के लिए, - हटाने के लिए)`,
+        alert_invalid_change:'अमान्य परिवर्तन संख्या',
+        prompt_note_placeholder:'नोट (जैसे, उत्पादन, सुधार)',
+        prompt_note_default:'उत्पादन',
+        initial_stock_note:'प्रारंभिक स्टॉक जोड़ा गया',
+        alert_valid_expense_details:'कृपया मान्य विवरण और राशि दर्ज करें।',
+        confirm_remove_expense:'क्या आप वाकई इस खर्च को हटाना चाहते हैं?',
+        all_vendors:'सभी',
+        select_vendor_placeholder:'-- विक्रेता चुनें --',
+        no_records:'कोई रिकॉर्ड नहीं',
+        generate_report_first:'पहले रिपोर्ट उत्पन्न करें',
+        stock_label:'स्टॉक',
+        alert_max_stock:(stock)=>`अधिकतम उपलब्ध स्टॉक ${stock} है`,
+        sale_by_seller:'बिक्री',
+        alert_select_vendor:'विक्रेता चुनें',
+        alert_add_at_least_one_item:'कम से कम 1 वस्तु जोड़ें',
+        sale_saved:'बिक्री सहेजी गई!',
+        no_sale_saved_yet:'अभी तक कोई बिक्री सहेजी नहीं गई है।',
+        print_last_bill_btn:'पिछला बिल प्रिंट करें',
+        no_sale_found:'कोई बिक्री नहीं मिली',
+        add_items_to_preview:'पूर्वावलोकन के लिए वस्तुएँ जोड़ें',
+        receipt_title:'रसीद',
+        receipt_vendor:'विक्रेता',
+        receipt_date:'तिथि',
+        receipt_item:'वस्तु',
+        receipt_quantity:'मात्रा',
+        receipt_rate:'दर',
+        receipt_total:'कुल',
+        receipt_subtotal:'उप-योग',
+        receipt_discount:'छूट',
+        receipt_final_amount:'अंतिम राशि',
+        no_recent_sales_for_vendor:'इस विक्रेता के लिए कोई हाल की बिक्री नहीं है।',
+        no_sales_yet:'कोई बिक्री नहीं',
+        confirm_reset:'क्या आप वाकई सभी डेटा हटाना और डेमो को रीसेट करना चाहते हैं?',
+        demo_reset_success:'डेमो रीसेट हो गया!',
+        admin_menu_title:'एडमिन मेनू',
+        seller_menu_title:'विक्रेता मेनू',
+        menu_dashboard:'डैशबोर्ड',
+        menu_vendors:'विक्रेता',
+        menu_products:'उत्पाद',
+        menu_sales:'बिक्री',
+        menu_expenses:'खर्च',
+        menu_reports:'रिपोर्ट',
+        menu_seller_create_sale:'विक्रेता — बिक्री बनाएँ',
+        payments_admin:'भुगतान (Payments)',
+        payments_record_btn:'भुगतान दर्ज करें',
+        payments_view_btn:'View'
+      },
+      en: {
+        app_subtitle:'Inventory • Sales • Audit',
+        view_label:'View:',
+        admin_panel_option:'Admin Panel',
+        seller_panel_option:'Seller Panel',
+        language_label:'Language:',
+        reset_demo_btn:'Reset Demo',
+        local_storage_note:'Data is stored locally in this browser.',
+        admin_dashboard_title:'Admin Dashboard',
+        overview:'Overview',
+        total_sales:'Total Sales',
+        total_items_sold:'Total Items Sold',
+        vendors:'Vendors',
+        products:'Products',
+        audit_entries:'Audit Entries',
+        recent_sales:'Recent Sales',
+        vendors_admin_title:'Vendors (Admin)',
+        vendor_name_placeholder:'Vendor Name (e.g. Prakash)',
+        commission_placeholder:'Commission %',
+        add_vendor_btn:'Add Vendor',
+        vendor_list:'List of Vendors',
+        products_inventory_title:'Products & Inventory (Admin)',
+        product_name_placeholder:'Product Name (e.g. Choco Bar)',
+        price_placeholder:'Price (₹)',
+        stock_qty_placeholder:'Stock Quantity (e.g., 50)',
+        image_url_placeholder:'Image URL (optional)',
+        add_product_btn:'Add Product',
+        inventory:'Inventory',
+        inventory_audit_log:'Inventory Audit Log',
+        all_sales_admin:'All Sales (Admin)',
+        expenses_admin:'Expenses (Admin)',
+        expense_desc_placeholder:'Expense Description (e.g. Milk)',
+        amount_placeholder:'Amount (₹)',
+        add_expense_btn:'Add Expense',
+        expense_list:'List of Expenses',
+        reports_admin:'Reports (Admin)',
+        from_label:'From',
+        to_label:'To',
+        vendor_label:'Vendor',
+        generate_btn:'Generate',
+        print_btn:'Print',
+        export_pdf_btn:'Export PDF',
+        seller_panel_create_sale:'Seller Panel — Create Sale',
+        select_vendor:'Select Vendor',
+        commission_perc:'Commission %',
+        discount_perc:'Discount %',
+        products_available_stock:'Products (Available Stock)',
+        sale_summary:'Sale Summary',
+        discount_commission_note:'Discount is applied first → then commission on the discounted amount.',
+        sub_total:'Sub-total',
+        discount:'Discount',
+        after_discount:'After Discount',
+        commission:'Commission',
+        final_amount:'Final Amount',
+        preview_bill_btn:'Preview Bill',
+        save_sale_btn:'Save Sale',
+        clear_btn:'Clear',
+        last_saved_sale:'Last Saved Sale (Yours)',
+        your_recent_sales:'Your Recent Sales',
+        th_name:'Name',
+        th_commission_perc:'Commission %',
+        th_actions:'Actions',
+        th_product:'Product',
+        th_price:'Price',
+        th_stock:'Stock',
+        th_last_update:'Last Updated',
+        th_date:'Date',
+        th_change:'Change',
+        th_by:'By',
+        th_note:'Note',
+        th_description:'Description',
+        th_amount:'Amount',
+        th_vendor:'Vendor',
+        th_items:'Items',
+        th_total:'Total',
+        th_discount:'Discount',
+        th_commission:'Commission',
+        th_final:'Final',
+        edit_btn:'Edit',
+        remove_btn:'Remove',
+        adjust_stock_btn:'Adjust Stock',
+        prompt_vendor_name:'Vendor Name',
+        prompt_commission:'Commission %',
+        alert_enter_vendor_name:'Enter a vendor name',
+        alert_vendor_exists:'Vendor already exists',
+        confirm_remove_vendor:'Remove this vendor?',
+        prompt_product_name:'Name',
+        prompt_price:'Price (₹)',
+        prompt_image_url:'Image URL',
+        alert_valid_name_price:'Enter a valid name and price',
+        confirm_remove_product:'Remove this product?',
+        prompt_stock_change:(name)=>`Enter change quantity for "${name}" (+ to add, - to remove)`,
+        alert_invalid_change:'Invalid change number',
+        prompt_note_placeholder:'Note (e.g., production, correction)',
+        prompt_note_default:'Production',
+        initial_stock_note:'Initial stock added',
+        alert_valid_expense_details:'Please enter a valid description and amount.',
+        confirm_remove_expense:'Are you sure you want to delete this expense?',
+        all_vendors:'All',
+        select_vendor_placeholder:'-- Select Vendor --',
+        no_records:'No records found',
+        generate_report_first:'Generate a report first',
+        stock_label:'Stock',
+        alert_max_stock:(stock)=>`Maximum available stock is ${stock}`,
+        sale_by_seller:'Sale',
+        alert_select_vendor:'Select a vendor',
+        alert_add_at_least_one_item:'Add at least 1 item',
+        sale_saved:'Sale saved!',
+        no_sale_saved_yet:'No sale has been saved yet.',
+        print_last_bill_btn:'Print Last Bill',
+        no_sale_found:'No sale found',
+        add_items_to_preview:'Add items to preview',
+        receipt_title:'Receipt',
+        receipt_vendor:'Vendor',
+        receipt_date:'Date',
+        receipt_item:'Item',
+        receipt_quantity:'Qty',
+        receipt_rate:'Rate',
+        receipt_total:'Total',
+        receipt_subtotal:'Sub-total',
+        receipt_discount:'Discount',
+        receipt_final_amount:'Final Amount',
+        no_recent_sales_for_vendor:'No recent sales for this vendor.',
+        no_sales_yet:'No sales yet',
+        confirm_reset:'Are you sure you want to delete all data and reset the demo?',
+        demo_reset_success:'Demo has been reset!',
+        admin_menu_title:'Admin Menu',
+        seller_menu_title:'Seller Menu',
+        menu_dashboard:'Dashboard',
+        menu_vendors:'Vendors',
+        menu_products:'Products',
+        menu_sales:'Sales',
+        menu_expenses:'Expenses',
+        menu_reports:'Reports',
+        menu_seller_create_sale:'Seller — Create Sale',
+        payments_admin:'Vendor Payments',
+        payments_record_btn:'Record Payment',
+        payments_view_btn:'View'
+      }
+    };
+
+    /* -------------------------
+       Persistence keys & helpers
+       ------------------------- */
+    const LS = {
+      vendors: 'cf_admin_vendors_v1',
+      products: 'cf_admin_products_v1',
+      sales: 'cf_admin_sales_v1',
+      audit: 'cf_admin_audit_v1',
+      expenses: 'cf_admin_expenses_v1',
+      payments: 'cf_admin_payments_v1'
+    };
+
+    <!-- Firebase + App Script -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBJC-7AJ78EZ-Z3UpNknqZRSGqMSU-A1mo",
+      authDomain: "cream-forest.firebaseapp.com",
+      projectId: "cream-forest",
+      storageBucket: "cream-forest.firebasestorage.app",
+      messagingSenderId: "329565131654",
+      appId: "1:329565131654:web:c03cc6486c423d68d21207",
+      measurementId: "G-ZJWX612Z2K"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    /* App State */
+    let currentLang = localStorage.getItem('cf_lang_v1') || 'en';
+    let vendors = load(LS.vendors);
+    let products = load(LS.products);
+    let sales = load(LS.sales);
+    let audit = load(LS.audit);
+    let expenses = load(LS.expenses);
+    let payments = load(LS.payments);
+
+    function seedDemo(){
+      if(!vendors.length) vendors = [{name:'Prakash',commission:42},{name:'Ravi',commission:30},{name:'Anita',commission:25}];
+      if(!products.length) products = [
+        {name:'Choco Bar',price:40,stock:50,img:'https://source.unsplash.com/300x200/?chocolate,icecream',updated:new Date().toISOString()},
+        {name:'Vanilla Cup',price:30,stock:120,img:'https://source.unsplash.com/300x200/?vanilla,icecream',updated:new Date().toISOString()},
+        {name:'Mango Tub',price:80,stock:60,img:'https://source.unsplash.com/300x200/?mango,icecream',updated:new Date().toISOString()}
+      ];
+      if(!sales.length) sales=[];
+      if(!audit.length) audit=[];
+      if(!expenses.length) expenses=[];
+      if(!payments.length) payments=[];
+      saveAll();
+    }
+    function saveAll(){
+      save(LS.vendors, vendors);
+      save(LS.products, products);
+      save(LS.sales, sales);
+      save(LS.audit, audit);
+      save(LS.expenses, expenses);
+      save(LS.payments, payments);
+    }
+    seedDemo();
+
+    /* Utils */
+    function T(key){
+      const v = translations[currentLang] && translations[currentLang][key];
+      return v !== undefined ? (typeof v === 'function' ? v : v) : key;
+    }
+    function fmt(v){ return Number(v||0).toFixed(2); }
+
+    /* Clock */
+    function tickClock(){ document.getElementById('clock').innerText = new Date().toLocaleString(currentLang==='hi' ? 'hi-IN' : 'en-US'); }
+    setInterval(tickClock,1000);
+    tickClock();
+
+    /* Language */
+    function setLanguage(lang){
+      currentLang = lang;
+      localStorage.setItem('cf_lang_v1', lang);
+      document.documentElement.lang = lang;
+      // translate elements
+      document.querySelectorAll('[data-translate-key]').forEach(el=>{
+        const key = el.dataset.translateKey;
+        const val = translations[lang] && translations[lang][key];
+        if(val){
+          if('placeholder' in el && el.placeholder !== undefined){
+            if(typeof val === 'string') el.placeholder = val;
+          }
+          // prefer innerText for most items (works for buttons, labels)
+          if(typeof val === 'string') el.innerText = val;
+        }
+      });
+      renderAll();
+    }
+    document.getElementById('langSelect').value = currentLang;
+    document.getElementById('langSelect').addEventListener('change', (e)=> setLanguage(e.target.value) );
+
+    /* Sidebar menu */
+    const adminMenu = [
+      {id:'admin-dashboard', tKey:'menu_dashboard'},
+      {id:'admin-vendors', tKey:'menu_vendors'},
+      {id:'admin-products', tKey:'menu_products'},
+      {id:'admin-sales', tKey:'menu_sales'},
+      {id:'admin-expenses', tKey:'menu_expenses'},
+      {id:'admin-reports', tKey:'menu_reports'},
+      {id:'admin-payments', tKey:'payments_admin'}
+    ];
+    const sellerMenu = [{id:'seller-panel', tKey:'menu_seller_create_sale'}];
+
+    function buildMenu(){
+      const menuDiv = document.getElementById('menu');
+      menuDiv.innerHTML = '';
+      const view = document.getElementById('panelSelect').value;
+      const list = view === 'admin' ? adminMenu : sellerMenu;
+      document.getElementById('sideTitle').innerText = view === 'admin' ? T('admin_menu_title') : T('seller_menu_title');
+      list.forEach(item=>{
+        const btn = document.createElement('button');
+        btn.innerText = (translations[currentLang] && translations[currentLang][item.tKey]) || item.tKey;
+        btn.onclick = () => {
+          showPanel(item.id);
+          Array.from(menuDiv.children).forEach(b=>b.classList.remove('active'));
+          btn.classList.add('active');
+        };
+        menuDiv.appendChild(btn);
+      });
+      if(menuDiv.firstChild) menuDiv.firstChild.classList.add('active');
+    }
+    document.getElementById('panelSelect').addEventListener('change', ()=>{
+      buildMenu(); applyTopPanel();
+    });
+
+    function switchPanelFromTop(){ buildMenu(); applyTopPanel(); }
+    function applyTopPanel(){
+      const view = document.getElementById('panelSelect').value;
+      if(view==='admin') showPanel('admin-dashboard'); else showPanel('seller-panel');
+      renderAll();
+    }
+    function showPanel(id){
+      document.querySelectorAll('main .panel').forEach(p=>p.style.display='none');
+      const el = document.getElementById(id);
+      if(el) el.style.display='block';
+    }
+
+    /* ---------- ADMIN: Vendors ---------- */
+    function renderAdminVendors(){
+      const table = document.querySelector('#tblAdminVendors');
+      table.innerHTML = `<thead><tr><th>${T('th_name')}</th><th>${T('th_commission_perc')}</th><th>${T('th_actions')}</th></tr></thead><tbody></tbody>`;
+      const tbody = table.querySelector('tbody');
+      vendors.forEach((v, idx)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${v.name}</td><td>${v.commission}%</td><td>
+          <button class="btn" onclick="adminEditVendor(${idx})">${T('edit_btn')}</button>
+          <button class="btn ghost" onclick="adminDeleteVendor(${idx})">${T('remove_btn')}</button>
+        </td>`;
+        tbody.appendChild(tr);
+      });
+
+      // update vendor selects
+      const rep = document.getElementById('adminRepVendor');
+      if(rep){
+        rep.innerHTML = `<option value="all">${T('all_vendors')}</option>`;
+        vendors.forEach(v=>{
+          const o = document.createElement('option'); o.value = v.name; o.text = v.name; rep.add(o);
+        });
+      }
+      const saleV = document.getElementById('saleVendor');
+      if(saleV){
+        saleV.innerHTML = `<option value="">${T('select_vendor_placeholder')}</option>`;
+        vendors.forEach(v=>{
+          const o = document.createElement('option'); o.value = v.name; o.text = `${v.name} (${v.commission}%)`; saleV.add(o);
+        });
+      }
+      const expenseVendor = document.getElementById('expenseVendor');
+      if(expenseVendor){
+        expenseVendor.innerHTML = `<option value="">-- Select Vendor --</option>`;
+        vendors.forEach(v=>{ const o2 = document.createElement('option'); o2.value = v.name; o2.text = `${v.name} (${v.commission}%)`; expenseVendor.add(o2); });
+      }
+      document.getElementById('adminStatVendors').innerText = vendors.length;
+    }
+    function adminAddVendor(){
+      const name = document.getElementById('adminVendorName').value.trim();
+      const comm = Number(document.getElementById('adminVendorComm').value || 0);
+      if(!name) return alert(T('alert_enter_vendor_name'));
+      if(vendors.some(x=>x.name.toLowerCase()===name.toLowerCase())) return alert(T('alert_vendor_exists'));
+
+      vendors.push({name, commission: comm});
+      saveAll();
+      renderAdminVendors();
+      document.getElementById('adminVendorName').value='';
+      document.getElementById('adminVendorComm').value='';
+    }
+    function adminEditVendor(i){
+      const v = vendors[i];
+      const nn = prompt(T('prompt_vendor_name'), v.name);
+      if(nn===null) return;
+      const nc = prompt(T('prompt_commission'), v.commission);
+      if(nc===null) return;
+
+      vendors[i].name = nn.trim();
+      vendors[i].commission = Number(nc) || 0;
+      saveAll();
+      renderAdminVendors();
+      renderAll();
+    }
+    function adminDeleteVendor(i){
+      if(!confirm(T('confirm_remove_vendor'))) return;
+
+      vendors.splice(i,1);
+      saveAll();
+      renderAdminVendors();
+      renderAll();
+    }
+
+    /* ---------- ADMIN: Products ---------- */
+    function renderAdminProducts(){
+      const table = document.querySelector('#tblAdminProducts');
+      table.innerHTML = `<thead><tr><th>${T('th_product')}</th><th>${T('th_price')}</th><th>${T('th_stock')}</th><th>${T('th_last_update')}</th><th>${T('th_actions')}</th></tr></thead><tbody></tbody>`;
+      const tbody = table.querySelector('tbody');
+      products.forEach((p,i)=>{
+        const last = p.updated ? new Date(p.updated).toLocaleString(currentLang==='hi'?'hi-IN':'en-US') : '-';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td style="display:flex;gap:10px;align-items:center"><img src="${p.img||''}" style="width:60px;height:40px;object-fit:cover;border-radius:6px"><div><b>${p.name}</b></div></td>
+          <td>₹${fmt(p.price)}</td><td>${p.stock}</td><td>${last}</td>
+          <td>
+            <button class="btn" onclick="adminEditProduct(${i})">${T('edit_btn')}</button>
+            <button class="btn ghost" onclick="adminAdjustStock(${i})">${T('adjust_stock_btn')}</button>
+            <button class="btn ghost" onclick="adminDeleteProduct(${i})">${T('remove_btn')}</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('adminStatProducts').innerText = products.length;
+      renderSellerProducts();
+      renderSellerPanel();
+    }
+    function adminAddProduct(){
+      const name = document.getElementById('adminProdName').value.trim();
+      const price = Number(document.getElementById('adminProdPrice').value || 0);
+      const qty = Number(document.getElementById('adminProdQty').value || 0);
+      const img = document.getElementById('adminProdImg').value.trim();
+
+      if(!name || price<=0) return alert(T('alert_valid_name_price'));
+
+      products.push({name, price, stock: qty, img, updated: new Date().toISOString()});
+      audit.push({date:new Date().toISOString(), product:name, change:qty, by:'admin', note:T('initial_stock_note')});
+      saveAll();
+      renderAdminProducts();
+      renderAdminAudit();
+
+      document.getElementById('adminProdName').value='';
+      document.getElementById('adminProdPrice').value='';
+      document.getElementById('adminProdQty').value='';
+      document.getElementById('adminProdImg').value='';
+    }
+    function adminEditProduct(i){
+      const p = products[i];
+      const nn = prompt(T('prompt_product_name'), p.name);
+      if(nn===null) return;
+      const np = prompt(T('prompt_price'), p.price);
+      if(np===null) return;
+      const ni = prompt(T('prompt_image_url'), p.img);
+      if(ni===null) return;
+
+      products[i].name = nn.trim();
+      products[i].price = Number(np) || p.price;
+      products[i].img = ni.trim();
+      products[i].updated = new Date().toISOString();
+      saveAll();
+      renderAdminProducts();
+      renderAdminAudit();
+    }
+    function adminDeleteProduct(i){
+      if(!confirm(T('confirm_remove_product'))) return;
+
+      products.splice(i,1);
+      saveAll();
+      renderAdminProducts();
+      renderAdminAudit();
+    }
+    function adminAdjustStock(i){
+      const p = products[i];
+      const changeStr = prompt(T('prompt_stock_change')(p.name), '+0');
+      if(changeStr===null) return;
+      const change = Number(changeStr);
+      if(isNaN(change) || change===0) return alert(T('alert_invalid_change'));
+      const note = prompt(T('prompt_note_placeholder'), T('prompt_note_default')) || '';
+
+      p.stock = Number(p.stock||0) + change;
+      p.updated = new Date().toISOString();
+
+      audit.push({date:new Date().toISOString(), product:p.name, change:change, by:'admin', note});
+      saveAll();
+      renderAdminProducts();
+      renderAdminAudit();
+    }
+
+    /* ---------- ADMIN: Audit ---------- */
+    function renderAdminAudit(){
+      const table = document.querySelector('#tblAdminAudit');
+      table.innerHTML = `<thead><tr><th>${T('th_date')}</th><th>${T('th_product')}</th><th>${T('th_change')}</th><th>${T('th_by')}</th><th>${T('th_note')}</th></tr></thead><tbody></tbody>`;
+      const tbody = table.querySelector('tbody');
+      audit.slice().reverse().forEach(a=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${new Date(a.date).toLocaleString(currentLang==='hi'?'hi-IN':'en-US')}</td><td>${a.product}</td><td>${a.change>0? '+'+a.change : a.change}</td><td>${a.by}</td><td>${a.note||''}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('adminStatAudit').innerText = audit.length;
+    }
+
+    /* ---------- Expenses ---------- */
+    function renderAdminExpenses(){
+      const table = document.querySelector('#tblAdminExpenses');
+      table.innerHTML = `<thead><tr><th>${T('th_date')}</th><th>${T('th_description')}</th><th>Type</th><th>${T('th_amount')}</th><th>Vendor</th><th>${T('th_actions')}</th></tr></thead><tbody></tbody>`;
+      const tbody = table.querySelector('tbody');
+      expenses.slice().reverse().forEach((e,i)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${new Date(e.date).toLocaleDateString(currentLang==='hi'?'hi-IN':'en-US')}</td><td>${e.desc}</td><td>${e.type || 'business'}</td><td>₹${fmt(e.amount)}</td>
+          <td>${e.vendor? e.vendor : '-'}</td>
+          <td><button class="btn ghost" onclick="deleteExpense(${e.id})">${T('remove_btn')}</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    function addExpense(){
+      const desc = document.getElementById('expenseDesc').value.trim();
+      const amt = Number(document.getElementById('expenseAmt').value);
+      const date = document.getElementById('expenseDate').value;
+      const type = document.getElementById('expenseType') ? document.getElementById('expenseType').value : 'business';
+      const vendor = document.getElementById('expenseVendor') ? document.getElementById('expenseVendor').value : '';
+
+      if(!desc || !amt || amt<=0 || !date) return alert(T('alert_valid_expense_details'));
+      if(type === 'settlement' && !vendor) return alert('Select a vendor for settlement');
+
+      const expObj = {id: Date.now(), desc, amount:amt, date, type, vendor: vendor || null};
+      expenses.push(expObj);
+
+      // If this is a settlement, also record a payment to vendor to reduce due
+      if(type === 'settlement'){
+        payments.push({ id: Date.now()+1, vendor, amount: amt, date: date, note: `Settlement: ${desc}` });
+      }
+
+      saveAll();
+      renderAdminExpenses();
+      document.getElementById('expenseDesc').value='';
+      document.getElementById('expenseAmt').value='';
+      document.getElementById('expenseDate').value='';
+      if(document.getElementById('expenseVendor')) document.getElementById('expenseVendor').value='';
+      renderAdminDashboard();
+      renderAdminPayments();
+    }
+    function deleteExpense(id){
+      if(!confirm(T('confirm_remove_expense'))) return;
+      expenses = expenses.filter(e=>e.id!==id);
+      saveAll();
+      renderAdminExpenses();
+      renderAdminDashboard();
+    }
+
+    /* ---------- ADMIN: Sales ---------- */
+    function renderAdminSales(){
+      const table = document.querySelector('#tblAdminSales');
+      table.innerHTML = `<thead><tr>
+        <th>${T('th_date')}</th>
+        <th>${T('th_vendor')}</th>
+        <th>${T('th_items')}</th>
+        <th>${T('th_total')}</th>
+        <th>${T('th_discount')}</th>
+        <th>${T('th_commission')}</th>
+        <th>${T('th_final')}</th>
+        <th>${T('th_actions')}</th>
+      </tr></thead><tbody></tbody>`;
+      const tbody = table.querySelector('tbody');
+      sales.slice().reverse().forEach(s=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${new Date(s.date).toLocaleString(currentLang==='hi'?'hi-IN':'en-US')}</td>
+          <td>${s.vendor}</td>
+          <td>${s.items.length}</td>
+          <td>₹${fmt(s.total)}</td>
+          <td>₹${fmt(s.discountAmt)} (${s.discount}%)</td>
+          <td>₹${fmt(s.commissionAmt)} (${s.commission}%)</td>
+          <td><b>₹${fmt(s.final)}</b></td>
+          <td><button class="btn ghost small" onclick="viewSaleDetails(${s.id})">${T('payments_view_btn')}</button></td>
+          `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    /* ---------- ADMIN: Dashboard ---------- */
+    function renderAdminDashboard(){
+      const grossSales = sales.reduce((acc,s)=>acc+(s.total||0), 0);
+      const totalItems = sales.reduce((acc,s)=>acc+s.items.reduce((sum,i)=>sum+i.qty,0), 0);
+      const platformFeeTotal = sales.reduce((acc,s)=>acc+(s.platformFee||s.commissionAmt||0), 0);
+      const vendorPayoutTotal = sales.reduce((acc,s)=>acc+(s.vendorPayout!==undefined? s.vendorPayout : s.final), 0);
+      const totalExpenses = expenses.reduce((acc,e)=>acc+(e.amount||0), 0);
+      const totalSettlements = expenses.filter(e=>e.type==='settlement').reduce((acc,e)=>acc+(e.amount||0),0);
+      const vendorMap = computeVendorTotals();
+      const vendorDueTotal = Object.keys(vendorMap).reduce((acc,k)=>acc + (vendorMap[k].due||0), 0);
+
+      document.getElementById('adminStatSales').innerText = fmt(grossSales);
+      document.getElementById('adminStatItems').innerText = totalItems;
+
+      // Update extra cards
+      document.getElementById('cardPlatformFee').innerText = '₹ ' + fmt(platformFeeTotal);
+      document.getElementById('cardVendorDue').innerText = '₹ ' + fmt(Math.max(0, vendorDueTotal));
+      document.getElementById('cardTotalExpenses').innerText = '₹ ' + fmt(totalExpenses);
+
+      // Render recent sales
+      const recentDiv = document.getElementById('adminRecentSales');
+      if(!sales.length){
+        recentDiv.innerHTML = `<div class="small">${T('no_sales_yet')}</div>`;
+        return;
+      }
+      recentDiv.innerHTML = `
+        <table class="table"><thead><tr>
+          <th>${T('th_date')}</th>
+          <th>${T('th_vendor')}</th>
+          <th>${T('th_total')}</th>
+          <th>${T('th_discount')}</th>
+          <th>${T('th_final')}</th>
+        </tr></thead><tbody>
+          ${sales.slice().reverse().slice(0, 10).map(s=>`
+            <tr>
+              <td>${new Date(s.date).toLocaleString(currentLang==='hi'?'hi-IN':'en-US')}</td>
+              <td>${s.vendor}</td>
+              <td>₹${fmt(s.total)}</td>
+              <td>₹${fmt(s.discountAmt)}</td>
+              <td><b>₹${fmt(s.final)}</b></td>
+            </tr>
+          `).join('')}
+        </tbody></table>
+      `;
+    }
+
+    /* ---------- ADMIN: Reports (Graph and Table) ---------- */
+    let adminChart = null;
+    function adminGenerateReport(){
+      const from = document.getElementById('adminRepFrom').value;
+      const to = document.getElementById('adminRepTo').value;
+      const vendor = document.getElementById('adminRepVendor').value;
+
+      const filteredSales = sales.filter(s=>{
+        const sDate = new Date(s.date).toISOString().substring(0,10);
+        let dateMatch = true;
+        if(from && sDate < from) dateMatch = false;
+        if(to && sDate > to) dateMatch = false;
+
+        let vendorMatch = true;
+        if(vendor !== 'all' && s.vendor !== vendor) vendorMatch = false;
+
+        return dateMatch && vendorMatch;
+      });
+
+      // 1. Calculate Summary
+      const summary = {
+        totalSales: filteredSales.reduce((acc,s)=>acc+s.final, 0),
+        totalItems: filteredSales.reduce((acc,s)=>acc+s.items.reduce((sum,i)=>sum+i.qty,0), 0),
+        totalDiscount: filteredSales.reduce((acc,s)=>acc+s.discountAmt, 0),
+        totalCommission: filteredSales.reduce((acc,s)=>acc+s.commissionAmt, 0),
+        totalExpense: expenses
+          .filter(e=>{
+            const eDate = new Date(e.date).toISOString().substring(0,10);
+            let dateMatch = true;
+            if(from && eDate < from) dateMatch = false;
+            if(to && eDate > to) dateMatch = false;
+            return dateMatch;
+          })
+          .reduce((acc,e)=>acc+e.amount, 0)
+      };
+      summary.profit = summary.totalSales - summary.totalCommission - summary.totalExpense;
+
+      // 2. Generate Vendor-wise data for table
+      const vendorMap = {};
+      filteredSales.forEach(s=>{
+        if(!vendorMap[s.vendor]) vendorMap[s.vendor] = { sales: 0, commission: 0, count: 0 };
+        vendorMap[s.vendor].sales += s.final;
+        vendorMap[s.vendor].commission += s.commissionAmt;
+        vendorMap[s.vendor].count++;
+      });
+      const vendorList = Object.keys(vendorMap).map(v=>({
+        name: v,
+        sales: vendorMap[v].sales,
+        commission: vendorMap[v].commission,
+        count: vendorMap[v].count
+      })).sort((a,b)=>b.sales-a.sales);
+
+      // 3. Render Report Area
+      const reportArea = document.getElementById('adminReportArea');
+      reportArea.innerHTML = `
+        <div class="grid-3" style="margin-bottom:12px">
+          <div class="panel">
+            <div class="small">${T('total_sales')} (Final)</div>
+            <div style="font-weight:700;font-size:18px">₹ ${fmt(summary.totalSales)}</div>
+          </div>
+          <div class="panel">
+            <div class="small">${T('th_commission')} Paid</div>
+            <div style="font-weight:700;font-size:18px">₹ ${fmt(summary.totalCommission)}</div>
+          </div>
+          <div class="panel">
+            <div class="small">${T('expenses_admin')}</div>
+            <div style="font-weight:700;font-size:18px">− ₹ ${fmt(summary.totalExpense)}</div>
+          </div>
+        </div>
+
+        <div class="panel" style="background:#e8f5e9; border:1px solid var(--accent)">
+          <div class="small">Net Profit (Sales - Commission - Expense)</div>
+          <div style="font-weight:700;font-size:24px; color:var(--accent)">₹ ${fmt(summary.profit)}</div>
+        </div>
+
+        <div style="height:12px"></div>
+        <h3>Vendor Performance</h3>
+        <table class="table">
+          <thead><tr>
+            <th>${T('th_vendor')}</th>
+            <th>${T('total_sales')} (Final)</th>
+            <th>${T('th_commission')}</th>
+            <th>Sales Count</th>
+          </tr></thead><tbody>
+            ${vendorList.map(v=>`
+              <tr>
+                <td>${v.name}</td>
+                <td>₹${fmt(v.sales)}</td>
+                <td>₹${fmt(v.commission)}</td>
+                <td>${v.count}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+
+      // 4. Render Chart
+      if(adminChart) adminChart.destroy();
+      const ctx = document.getElementById('adminChartVendor').getContext('2d');
+      adminChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: vendorList.map(v=>v.name),
+          datasets: [{
+            label: T('total_sales')+' (Final)',
+            data: vendorList.map(v=>v.sales),
+            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+          },
+          {
+            label: T('th_commission'),
+            data: vendorList.map(v=>v.commission),
+            backgroundColor: 'rgba(255, 99, 132, 0.6)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    function adminPrintReport(){
+      const area = document.getElementById('adminReportArea');
+      if(!area.innerHTML) return alert(T('generate_report_first'));
+
+      const from = document.getElementById('adminRepFrom').value || 'Start';
+      const to = document.getElementById('adminRepTo').value || 'End';
+      const vendor = document.getElementById('adminRepVendor').value;
+
+      const printWindow = window.open('','Print Report');
+      printWindow.document.write(`
+        <html><head><title>${T('reports_admin')} (${from} to ${to} - ${vendor})</title></head>
+        <body style="font-family:'Segoe UI',Roboto,system-ui,Arial; margin:0; padding:10px;">
+          <h2 style="text-align:center">${T('reports_admin')}</h2>
+          <div style="text-align:center; margin-bottom:15px; font-size:14px; color:#666">
+             ${T('from_label')}: ${from} | ${T('to_label')}: ${to} | ${T('vendor_label')}: ${vendor}
+          </div>
+          ${area.innerHTML}
+        </body></html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    }
+
+    async function adminExportReportPdf(){
+      const area = document.getElementById('adminReportArea');
+      if(!area.innerHTML) return alert(T('generate_report_first'));
+
+      const tempArea = document.createElement('div');
+      tempArea.innerHTML = area.innerHTML;
+      tempArea.style.padding = '20px';
+      tempArea.style.background = '#fff';
+      document.body.appendChild(tempArea);
+
+      // Temporarily hide chart since html2canvas can have issues
+      const chartCanvas = document.getElementById('adminChartVendor');
+      const chartParent = chartCanvas ? chartCanvas.parentNode : null;
+      if (chartParent) chartParent.style.display = 'none';
+
+      const canvas = await html2canvas(tempArea);
+      const img = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      const width = pdf.internal.pageSize.getWidth() - 40;
+      const height = (canvas.height * width) / canvas.width;
+      pdf.addImage(img, 'PNG', 20, 20, width, height);
+
+      const from = document.getElementById('adminRepFrom').value || 'Start';
+      const to = document.getElementById('adminRepTo').value || 'End';
+      pdf.save(`Report-${from}-${to}.pdf`);
+
+      tempArea.remove();
+      if (chartParent) chartParent.style.display = 'block'; // Show chart again
+    }
+
+
+    /* ---------- ADMIN: Payments ---------- */
+    function renderAdminPayments(){
+      const map = computeVendorTotals();
+      const table = document.querySelector('#tblAdminPayments');
+      table.innerHTML = `<thead><tr>
+        <th>${T('th_vendor')}</th>
+        <th>Total Sales</th>
+        <th>Total Paid</th>
+        <th>Due Amount</th>
+        <th>${T('th_actions')}</th>
+      </tr></thead><tbody></tbody>`;
+      const tbody = table.querySelector('tbody');
+
+      vendors.forEach(v=>{
+        const totals = map[v.name] || {salesTotal: 0, paidTotal: 0, due: 0};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${v.name}</td>
+          <td>₹${fmt(totals.salesTotal)}</td>
+          <td>₹${fmt(totals.paidTotal)}</td>
+          <td><b style="color:${totals.due > 0 ? 'var(--accent2)' : totals.due < 0 ? 'var(--accent)' : '#333'}">₹${fmt(totals.due)}</b></td>
+          <td>
+            <button class="btn small" onclick="showRecordPaymentModal('${v.name}')">${T('payments_record_btn')}</button>
+            <button class="btn ghost small" onclick="viewVendorPayments('${v.name}')">${T('payments_view_btn')}</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function showRecordPaymentModal(vendor){
+      const map = computeVendorTotals();
+      const totals = map[vendor] || {salesTotal: 0, paidTotal: 0, due: 0};
+
+      const modalHTML = `
+        <div class="modal-backdrop" onclick="closeModal(event)">
+          <div class="modal" onclick="event.stopPropagation()">
+            <h3 style="margin-top:0">${T('payments_record_btn')} for ${vendor}</h3>
+            <div style="margin-bottom:12px; font-size:14px;">
+                Due: <b style="color:var(--accent2)">₹${fmt(totals.due)}</b>
+            </div>
+            <div style="margin-bottom:12px">
+                <label class="small">Amount (₹)</label><br>
+                <input id="paymentAmount" class="input" type="number" min="0" value="${Math.max(0, Math.ceil(totals.due))}">
+            </div>
+            <div style="margin-bottom:12px">
+                <label class="small">Note (Optional)</label><br>
+                <input id="paymentNote" class="input" type="text" placeholder="e.g. Bank Transfer, Cash">
+            </div>
+            <div style="margin-bottom:12px">
+                <label class="small">Date</label><br>
+                <input id="paymentDate" class="input" type="date" value="${new Date().toISOString().substring(0,10)}">
+            </div>
+            <button class="btn" onclick="recordPayment('${vendor}')">${T('payments_record_btn')}</button>
+          </div>
+        </div>
+        <style>
+          .modal-backdrop{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000}
+          .modal{background:var(--card);padding:20px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.2);max-width:400px;width:90%}
+        </style>
+      `;
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    function recordPayment(vendor){
+      const amount = Number(document.getElementById('paymentAmount').value);
+      const note = document.getElementById('paymentNote').value.trim();
+      const date = document.getElementById('paymentDate').value;
+
+      if(amount <= 0 || !date) return alert('Enter a valid amount and date.');
+
+      payments.push({
+        id: Date.now(),
+        vendor,
+        amount,
+        date,
+        note
+      });
+      saveAll();
+      renderAdminPayments();
+      closeModal();
+    }
+
+    function viewVendorPayments(vendor){
+      const list = payments.filter(p=>p.vendor === vendor).slice().reverse();
+      if(!list.length) return alert(`No payment records found for ${vendor}`);
+
+      const modalHTML = `
+        <div class="modal-backdrop" onclick="closeModal(event)">
+          <div class="modal" onclick="event.stopPropagation()" style="max-width:600px;">
+            <h3 style="margin-top:0">Payment History: ${vendor}</h3>
+            <table class="table" style="font-size:14px;">
+              <thead><tr>
+                <th>Date</th>
+                <th>Amount (₹)</th>
+                <th>Note</th>
+              </tr></thead><tbody>
+                ${list.map(p=>`
+                  <tr>
+                    <td>${new Date(p.date).toLocaleDateString(currentLang==='hi'?'hi-IN':'en-US')}</td>
+                    <td>₹${fmt(p.amount)}</td>
+                    <td>${p.note || ''}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            <div style="text-align:right; margin-top:12px">
+                <button class="btn ghost" onclick="exportVendorPaymentsPdf('${vendor}', list)">Export PDF</button>
+            </div>
+          </div>
+        </div>
+        <style>
+          .modal-backdrop{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000}
+          .modal{background:var(--card);padding:20px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.2);max-width:400px;width:90%}
+        </style>
+      `;
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    async function exportVendorPaymentsPdf(vendor, list){
+      // Create a temporary area to render the payments table for PDF
+      const area = document.createElement('div');
+      area.style.padding = '20px';
+      area.style.background = '#fff';
+      area.innerHTML = `
+        <h2 style="text-align:center">Payment History: ${vendor}</h2>
+        <table class="table" style="width:100%; border-collapse:collapse; font-size:14px;">
+          <thead><tr>
+            <th style="border:1px solid #ddd; padding:8px; text-align:left">Date</th>
+            <th style="border:1px solid #ddd; padding:8px; text-align:left">Amount (₹)</th>
+            <th style="border:1px solid #ddd; padding:8px; text-align:left">Note</th>
+          </tr></thead><tbody>
+          ${list
+            .map(
+              p => `<tr>
+              <td style="border:1px solid #ddd; padding:8px">${new Date(p.date).toLocaleDateString(currentLang==='hi'?'hi-IN':'en-US')}</td>
+              <td style="border:1px solid #ddd; padding:8px">₹${fmt(p.amount)}</td>
+              <td style="border:1px solid #ddd; padding:8px">${p.note || ''}</td>
+            </tr>`
+            )
+            .join('')}
+          </tbody>
+        </table>`;
+      document.body.appendChild(area);
+      const canvas = await html2canvas(area);
+      const img = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      const width = pdf.internal.pageSize.getWidth() - 40;
+      const height = (canvas.height * width) / canvas.width;
+      pdf.addImage(img, 'PNG', 20, 20, width, height);
+      pdf.save(`Payments-${vendor}.pdf`);
+      area.remove();
+    }
+
+    /* ✅ Utility: Close modal */
+    function closeModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    }
+
+    /* ✅ Helper to compute totals */
+    function computeVendorTotals() {
+      const map = {};
+      sales.forEach(s => {
+        const v = s.vendor;
+        if (!map[v]) map[v] = { salesTotal: 0, paidTotal: 0, due: 0 };
+        map[v].salesTotal += s.final;
+      });
+      payments.forEach(p => {
+        if (!map[p.vendor]) map[p.vendor] = { salesTotal: 0, paidTotal: 0, due: 0 };
+        map[p.vendor].paidTotal += p.amount;
+      });
+      Object.keys(map).forEach(v => {
+        map[v].due = map[v].salesTotal - map[v].paidTotal;
+      });
+      return map;
+    }
+
+    /* -------------------------
+       SELLER PANEL LOGIC
+       ------------------------- */
+    let cart = {}; // { product_name: {qty, price, total} }
+    let lastSale = load('cf_last_sale') || null;
+
+    function renderSellerPanel(){
+      document.getElementById('saleCommission').value = '';
+      document.getElementById('saleDiscount').value = 0;
+      cart = {};
+      updateSaleSummary();
+      renderLastSale();
+      renderSellerRecent();
+    }
+
+    function onVendorSelect(){
+      const vendorName = document.getElementById('saleVendor').value;
+      const vendor = vendors.find(v=>v.name === vendorName);
+      const commission = vendor ? vendor.commission : 0;
+      document.getElementById('saleCommission').value = commission;
+      updateSaleSummary();
+    }
+
+    function renderSellerProducts(){
+      const grid = document.getElementById('sellerProducts');
+      grid.innerHTML = products.map((p,i)=>`
+        <div class="prod" onclick="addToCart('${p.name}')">
+          <img src="${p.img||'https://source.unsplash.com/300x200/?icecream'}" alt="${p.name}">
+          <div style="font-weight:600">${p.name}</div>
+          <div class="small">₹${fmt(p.price)}</div>
+          <div class="small" style="color:${p.stock>10?'var(--accent)':'var(--accent2)'}">${T('stock_label')}: ${p.stock}</div>
+        </div>
+      `).join('');
+    }
+
+    function addToCart(name){
+      const p = products.find(x=>x.name===name);
+      if(!p || p.stock <= 0) return alert(T('alert_max_stock')(p.stock));
+
+      if(!cart[name]) cart[name] = {qty: 0, price: p.price, total: 0, name: p.name};
+
+      if(cart[name].qty >= p.stock) return alert(T('alert_max_stock')(p.stock));
+
+      cart[name].qty++;
+      cart[name].total = cart[name].qty * cart[name].price;
+      updateSaleSummary();
+    }
+    function updateCart(name, qty){
+      const p = products.find(x=>x.name===name);
+      if(!p) return;
+      const q = Number(qty);
+
+      if(q<=0){ delete cart[name]; }
+      else if(q > p.stock){ alert(T('alert_max_stock')(p.stock)); cart[name].qty = p.stock; }
+      else{ cart[name].qty = q; }
+
+      if(cart[name]){ cart[name].total = cart[name].qty * cart[name].price; }
+      updateSaleSummary();
+    }
+    function removeCartItem(name){
+      delete cart[name];
+      updateSaleSummary();
+    }
+    function getCartItems(){ return Object.values(cart); }
+
+    function computeSaleTotals(){
+      const cartItems = getCartItems();
+      const commissionPerc = Number(document.getElementById('saleCommission').value || 0) / 100;
+      const discountPerc = Number(document.getElementById('saleDiscount').value || 0) / 100;
+
+      const subTotal = cartItems.reduce((acc,item)=>acc+item.total, 0);
+
+      // Discount is applied first
+      const discountAmt = subTotal * discountPerc;
+      const afterDiscount = subTotal - discountAmt;
+
+      // Commission is applied on the discounted amount
+      const commissionAmt = afterDiscount * commissionPerc;
+
+      const final = afterDiscount - commissionAmt; // commission deducted ✅
+
+      return { subTotal, discountAmt, commissionAmt, final };
+    }
+
+    function updateSaleSummary(){
+      const { subTotal, discountAmt, commissionAmt, final } = computeSaleTotals();
+      const commissionPerc = Number(document.getElementById('saleCommission').value || 0);
+      const discountPerc = Number(document.getElementById('saleDiscount').value || 0);
+      const receivedNow = Number(document.getElementById('saleReceivedNow').value || 0);
+      const afterDiscount = subTotal - discountAmt;
+
+      document.getElementById('saleTotal').innerText = fmt(subTotal);
+      document.getElementById('saleDiscountLabel').innerText = discountPerc;
+      document.getElementById('saleDiscountAmt').innerText = fmt(discountAmt);
+      document.getElementById('saleAfterDiscount').innerText = fmt(afterDiscount);
+      document.getElementById('saleCommissionLabel').innerText = commissionPerc;
+      document.getElementById('saleCommAmt').innerText = fmt(commissionAmt);
+      document.getElementById('saleFinal').innerText = fmt(final);
+
+      // Update Received Now default to final if 0
+      if(receivedNow === 0){
+        document.getElementById('saleReceivedNow').value = fmt(final);
+      }
+
+      // Render cart table
+      const saleRight = document.querySelector('.sale-right');
+      let cartTable = saleRight.querySelector('#saleCartTable');
+      if(!cartTable){
+        cartTable = document.createElement('div');
+        cartTable.id = 'saleCartTable';
+        cartTable.style.marginTop = '12px';
+        saleRight.insertBefore(cartTable, saleRight.querySelector('h3'));
+      }
+
+      const cartItems = getCartItems();
+      if(cartItems.length){
+        cartTable.innerHTML = `
+          <h4 style="margin:8px 0; font-size:14px;">Items:</h4>
+          <table class="table" style="font-size:13px; margin-bottom:12px;">
+            <thead><tr>
+              <th>${T('th_product')}</th>
+              <th>${T('receipt_rate')}</th>
+              <th style="width:70px">${T('receipt_quantity')}</th>
+              <th>${T('receipt_total')}</th>
+              <th>${T('th_actions')}</th>
+            </tr></thead><tbody>
+              ${cartItems.map(item => `
+                <tr>
+                  <td>${item.name}</td>
+                  <td>₹${fmt(item.price)}</td>
+                  <td><input type="number" min="1" max="${products.find(p=>p.name===item.name)?.stock || 1}" value="${item.qty}" class="input small" style="width:100%; padding:4px" oninput="updateCart('${item.name}', this.value)"></td>
+                  <td>₹${fmt(item.total)}</td>
+                  <td><button class="btn ghost small" onclick="removeCartItem('${item.name}')" style="padding:2px 6px;">X</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } else {
+        cartTable.innerHTML = `<div class="note">No items added to cart.</div>`;
+      }
+
+      // Hide preview area if cart is empty
+      if(!cartItems.length){
+        document.getElementById('salePreviewArea').style.display = 'none';
+      }
+    }
+
+    /* -----------------------------------------------------
+       MODIFIED: New Professional Printout Function
+       ----------------------------------------------------- */
+
+    function previewSale(){
+      const area = document.getElementById('salePreviewArea');
+      const cartItems = getCartItems();
+      if(!cartItems.length) return area.innerHTML = `<div class="note">${T('add_items_to_preview')}</div>`;
+      area.style.display='block';
+
+      // Recompute summary for accurate preview
+      const { subTotal, discountAmt, commissionAmt, final } = computeSaleTotals();
+      const vendorName = document.getElementById('saleVendor').value;
+      const commissionPerc = document.getElementById('saleCommission').value; // Get commission %
+      const discountPerc = document.getElementById('saleDiscount').value; // Get discount %
+      const afterDiscount = subTotal - discountAmt; // Calculate After Discount
+
+      area.innerHTML = `
+        <div style="padding:16px; font-size:14px; border:1px solid #ccc; border-radius:8px; margin:0 auto; max-width:400px; background:#fff;">
+          <h3 style="text-align:center;margin:0 0 12px 0; font-size:18px;">${T('receipt_title')}</h3>
+          <div style="border-bottom:1px solid #ddd; padding-bottom:8px; margin-bottom:8px">
+            <div>${T('receipt_vendor')}: <b>${vendorName}</b></div>
+            <div>${T('receipt_date')}: <b>${new Date().toLocaleString(currentLang==='hi'?'hi-IN':'en-US')}</b></div>
+          </div>
+          <table style="width:100%; border-collapse:collapse; margin-bottom:12px">
+            <tr>
+              <th style="text-align:left; border-bottom:1px solid #eee; padding:4px 0;">${T('receipt_item')}</th>
+              <th style="text-align:right; border-bottom:1px solid #eee; padding:4px 0;">${T('receipt_rate')}</th>
+              <th style="text-align:right; border-bottom:1px solid #eee; padding:4px 0;">${T('receipt_quantity')}</th>
+              <th style="text-align:right; border-bottom:1px solid #eee; padding:4px 0;">${T('receipt_total')}</th>
+            </tr>
+            ${cartItems.map(item => `
+              <tr>
+                <td style="text-align:left; padding:2px 0;">${item.name}</td>
+                <td style="text-align:right; padding:2px 0;">${fmt(item.price)}</td>
+                <td style="text-align:right; padding:2px 0;">${item.qty}</td>
+                <td style="text-align:right; padding:2px 0;">${fmt(item.total)}</td>
+              </tr>
+            `).join('')}
+          </table>
+          
+          <div style="border-top:1px solid #ddd; padding-top:8px;">
+            <div style="display:flex; justify-content:space-between">
+              <div>${T('receipt_subtotal')} (${T('th_total')})</div> <div><b>₹ ${fmt(subTotal)}</b></div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; color:var(--accent2)">
+              <div>${T('receipt_discount')} (${discountPerc}%)</div> <div>− ₹ ${fmt(discountAmt)}</div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; margin-top:4px; padding-top:4px; border-top:1px solid #eee; font-weight:600;">
+                <div>${T('after_discount')}</div> <div>₹ ${fmt(afterDiscount)}</div>
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; color:var(--accent)">
+              <div>${T('commission')} (${commissionPerc}%)</div> <div>− ₹ ${fmt(commissionAmt)}</div>
+            </div>
+            
+            <hr style="border:0; border-top:2px solid #333; margin:8px 0;">
+            
+            <div style="display:flex; justify-content:space-between; font-weight:700; font-size:16px;">
+              <div>${T('receipt_final_amount')}</div> <div>₹ ${fmt(final)}</div>
+            </div>
+          </div>
+
+          <div style="text-align:center; margin-top:12px; border-top:1px solid #ddd; padding-top:8px; font-size:12px; color:#666">
+             <small>Thank You! Visit Again.</small>
+          </div>
+        </div>
+      `;
+      document.getElementById('salePreviewArea').scrollIntoView({behavior:'smooth'});
+    }
+
+
+    function printCurrentSale(){
+      previewSale();
+      const area = document.getElementById('salePreviewArea').querySelector('div');
+      if(!area) return alert(T('add_items_to_preview'));
+      const printWindow = window.open('','Print Bill');
+      printWindow.document.write(`
+        <html><head><title>${T('receipt_title')}</title></head>
+        <body style="font-family:'Segoe UI',Roboto,system-ui,Arial; margin:0; padding:10px;">
+          <style>
+              @page { margin: 10mm; } 
+              * { font-size: 14px; } 
+              h3 { font-size: 18px; }
+              body { background: #fff; }
+          </style>
+          ${area.outerHTML}
+        </body></html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    }
+
+    async function saveCurrentSaleAsPdf(){
+      previewSale();
+      const area = document.getElementById('salePreviewArea').querySelector('div');
+      if(!area) return alert(T('add_items_to_preview'));
+
+      const tempArea = document.createElement('div');
+      tempArea.innerHTML = area.outerHTML;
+      tempArea.style.padding = '20px';
+      tempArea.style.background = '#fff'; // Ensure white background for PDF
+      document.body.appendChild(tempArea);
+
+      const canvas = await html2canvas(tempArea);
+      const img = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      const width = pdf.internal.pageSize.getWidth() - 40;
+      const height = (canvas.height * width) / canvas.width;
+      pdf.addImage(img, 'PNG', 20, 20, width, height);
+
+      const vendor = document.getElementById('saleVendor').value || 'Sale';
+      const date = new Date().toISOString().substring(0,10);
+      pdf.save(`Sale-Bill-${vendor}-${date}.pdf`);
+
+      tempArea.remove();
+      document.getElementById('salePreviewArea').style.display='none';
+    }
+
+
+    /* -----------------------------------------------------
+       END OF MODIFIED FUNCTIONS
+       ----------------------------------------------------- */
+
+    function submitSale(){
+      const vendor = document.getElementById('saleVendor').value;
+      const commission = Number(document.getElementById('saleCommission').value || 0);
+      const discount = Number(document.getElementById('saleDiscount').value || 0);
+      const receivedNow = Number(document.getElementById('saleReceivedNow').value || 0);
+      const paymentType = document.getElementById('salePaymentType').value;
+      const cartItems = getCartItems();
+
+      if(!vendor) return alert(T('alert_select_vendor'));
+      if(!cartItems.length) return alert(T('alert_add_at_least_one_item'));
+
+      const { subTotal, discountAmt, commissionAmt, final } = computeSaleTotals();
+
+      const newSale = {
+        id: Date.now(),
+        date: new Date().toISOString(),
+        vendor,
+        commission,
+        discount,
+        total: subTotal,
+        discountAmt,
+        commissionAmt,
+        final,
+        items: cartItems.map(i=>({...i, price: Number(i.price)})),
+        receivedNow,
+        paymentType
+      };
+
+      // 1. Update Sales
+      sales.push(newSale);
+
+      // 2. Update Product Stock (Audit is handled in product update)
+      cartItems.forEach(item=>{
+        const p = products.find(x=>x.name===item.name);
+        if(p){
+          const change = -item.qty; // negative change for sale
+          p.stock = Number(p.stock||0) + change;
+          p.updated = new Date().toISOString();
+          audit.push({date:new Date().toISOString(), product:p.name, change, by:T('sale_by_seller'), note:`Sold to ${vendor}`});
+        }
+      });
+
+      // 3. Handle Payment (if applicable)
+      if(newSale.paymentType === 'received' && newSale.receivedNow > 0){
+        payments.push({
+          id: Date.now()+1,
+          vendor,
+          amount: newSale.receivedNow,
+          date: new Date().toISOString().substring(0,10),
+          note: `Payment received for sale #${newSale.id}`
+        });
+      }
+
+      // 4. Save and Update UI
+      saveAll();
+      lastSale = newSale;
+      save('cf_last_sale', lastSale);
+      renderAll();
+      clearSaleInputs(false);
+      alert(T('sale_saved'));
+    }
+
+    function clearSaleInputs(clearVendor = true){
+      cart = {};
+      if(clearVendor) document.getElementById('saleVendor').value = '';
+      document.getElementById('saleCommission').value = '';
+      document.getElementById('saleDiscount').value = 0;
+      document.getElementById('saleReceivedNow').value = 0;
+      document.getElementById('salePaymentType').value = 'received';
+      document.getElementById('salePreviewArea').style.display='none';
+      updateSaleSummary();
+    }
+
+    /* Last Sale */
+    function renderLastSale(){
+      const div = document.getElementById('sellerLastSale');
+      const actionsDiv = document.getElementById('sellerLastSaleActions');
+      if(!lastSale){
+        div.innerHTML = T('no_sale_saved_yet');
+        actionsDiv.innerHTML = '';
+        return;
+      }
+      div.innerHTML = `
+        <b>Sale ID:</b> ${lastSale.id}<br>
+        <b>Date:</b> ${new Date(lastSale.date).toLocaleString(currentLang==='hi'?'hi-IN':'en-US')}<br>
+        <b>Vendor:</b> ${lastSale.vendor} (Comm: ${lastSale.commission}%)<br>
+        <b>Total:</b> ₹${fmt(lastSale.total)} | <b>Discount:</b> ₹${fmt(lastSale.discountAmt)} (${lastSale.discount}%)<br>
+        <b>Final Amount:</b> ₹${fmt(lastSale.final)}
+      `;
+      actionsDiv.innerHTML = `
+        <button class="btn warn" onclick="printLastSale()" data-translate-key="print_last_bill_btn">${T('print_last_bill_btn')}</button>
+      `;
+    }
+    function printLastSale(){
+      if(!lastSale) return alert(T('no_sale_found'));
+      // A dedicated function to print the saved sale is too complex to implement fully here.
+      // We will re-use the general print function by creating a temporary DOM structure.
+      const tempArea = document.createElement('div');
+      // Recreate the bill structure for the last sale
+      const afterDiscount = lastSale.total - lastSale.discountAmt;
+      tempArea.innerHTML = `
+        <div style="padding:16px; font-size:14px; border:1px solid #ccc; border-radius:8px; margin:0 auto; max-width:400px; background:#fff;">
+          <h3 style="text-align:center;margin:0 0 12px 0; font-size:18px;">${T('receipt_title')} (Copy)</h3>
+          <div style="border-bottom:1px solid #ddd; padding-bottom:8px; margin-bottom:8px">
+            <div>${T('receipt_vendor')}: <b>${lastSale.vendor}</b></div>
+            <div>${T('receipt_date')}: <b>${new Date(lastSale.date).toLocaleString(currentLang==='hi'?'hi-IN':'en-US')}</b></div>
+          </div>
+          <table style="width:100%; border-collapse:collapse; margin-bottom:12px">
+            <tr>
+              <th style="text-align:left; border-bottom:1px solid #eee; padding:4px 0;">${T('receipt_item')}</th>
+              <th style="text-align:right; border-bottom:1px solid #eee; padding:4px 0;">${T('receipt_rate')}</th>
+              <th style="text-align:right; border-bottom:1px solid #eee; padding:4px 0;">${T('receipt_quantity')}</th>
+              <th style="text-align:right; border-bottom:1px solid #eee; padding:4px 0;">${T('receipt_total')}</th>
+            </tr>
+            ${lastSale.items.map(item => `
+              <tr>
+                <td style="text-align:left; padding:2px 0;">${item.name}</td>
+                <td style="text-align:right; padding:2px 0;">${fmt(item.price)}</td>
+                <td style="text-align:right; padding:2px 0;">${item.qty}</td>
+                <td style="text-align:right; padding:2px 0;">${fmt(item.total)}</td>
+              </tr>
+            `).join('')}
+          </table>
+          
+          <div style="border-top:1px solid #ddd; padding-top:8px;">
+            <div style="display:flex; justify-content:space-between">
+              <div>${T('receipt_subtotal')} (${T('th_total')})</div> <div><b>₹ ${fmt(lastSale.total)}</b></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; color:var(--accent2)">
+              <div>${T('receipt_discount')} (${lastSale.discount}%)</div> <div>− ₹ ${fmt(lastSale.discountAmt)}</div>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top:4px; padding-top:4px; border-top:1px solid #eee; font-weight:600;">
+                <div>${T('after_discount')}</div> <div>₹ ${fmt(afterDiscount)}</div>
+            </div>
+            <div style="display:flex; justify-content:space-between; color:var(--accent)">
+              <div>${T('commission')} (${lastSale.commission}%)</div> <div>− ₹ ${fmt(lastSale.commissionAmt)}</div>
+            </div>
+            <hr style="border:0; border-top:2px solid #333; margin:8px 0;">
+            <div style="display:flex; justify-content:space-between; font-weight:700; font-size:16px;">
+              <div>${T('receipt_final_amount')}</div> <div>₹ ${fmt(lastSale.final)}</div>
+            </div>
+             <div style="display:flex; justify-content:space-between; margin-top:8px; padding-top:4px; border-top:1px solid #eee; font-size:12px; color:#666">
+              <div>Received:</div> <div>₹ ${fmt(lastSale.receivedNow)}</div>
+            </div>
+          </div>
+          <div style="text-align:center; margin-top:12px; border-top:1px solid #ddd; padding-top:8px; font-size:12px; color:#666">
+             <small>Thank You! Visit Again.</small>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(tempArea);
+
+      const printWindow = window.open('','Print Bill');
+      printWindow.document.write(`
+        <html><head><title>${T('receipt_title')} (Copy)</title></head>
+        <body style="font-family:'Segoe UI',Roboto,system-ui,Arial; margin:0; padding:10px;">
+          <style>
+              @page { margin: 10mm; } 
+              * { font-size: 14px; } 
+              h3 { font-size: 18px; }
+              body { background: #fff; }
+          </style>
+          ${tempArea.innerHTML}
+        </body></html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      tempArea.remove();
+    }
+
+
+    /* Recent Sales */
+    function renderSellerRecent(){
+      const vendor = document.getElementById('saleVendor').value;
+      const recentSales = sales.filter(s=>s.vendor === vendor).slice().reverse().slice(0, 5);
+      const div = document.getElementById('sellerRecent');
+
+      if(!vendor) {
+        div.innerHTML = `<div class="small">${T('select_vendor')} to see recent sales.</div>`;
+        return;
+      }
+      if(!recentSales.length){
+        div.innerHTML = `<div class="small">${T('no_recent_sales_for_vendor')}</div>`;
+        return;
+      }
+
+      div.innerHTML = `
+        <table class="table"><thead><tr>
+          <th>${T('th_date')}</th>
+          <th>${T('th_items')}</th>
+          <th>${T('th_discount')}</th>
+          <th>${T('th_final')}</th>
+        </tr></thead><tbody>
+          ${recentSales.map(s=>`
+            <tr>
+              <td>${new Date(s.date).toLocaleDateString(currentLang==='hi'?'hi-IN':'en-US')}</td>
+              <td>${s.items.length}</td>
+              <td>₹${fmt(s.discountAmt)}</td>
+              <td><b>₹${fmt(s.final)}</b></td>
+            </tr>
+          `).join('')}
+        </tbody></table>
+      `;
+    }
+
+    /* Master Renderer */
+    function renderAll(){
+      // General Renders
+      renderAdminVendors();
+      renderAdminProducts();
+      renderAdminAudit();
+      renderAdminSales();
+      renderAdminExpenses();
+      renderAdminDashboard();
+      renderAdminPayments();
+
+      // Seller Renders
+      renderSellerProducts();
+      renderLastSale();
+      renderSellerRecent();
+      updateSaleSummary(); // Recalculate summary and cart for current state
+    }
+
+    /* Initial Load & Reset */
+    document.addEventListener('DOMContentLoaded', ()=>{
+      setLanguage(currentLang);
+      buildMenu();
+      applyTopPanel();
+      renderAll();
+    });
+  </script>
+</body>
+</html>
